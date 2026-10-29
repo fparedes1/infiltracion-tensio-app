@@ -82,7 +82,6 @@ with st.sidebar:
         help="Cada hoja debe representar una determinación a campo con columnas: Tiempo (min) y Lámina (cm)"
     )
     
-    # Sección lateral modificada (Cálculos y Resultados sin instructivo flotante)
     if archivo_subido is not None:
         st.markdown("---")
         st.header("📋 Cálculos y Resultados")
@@ -100,7 +99,7 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# Pestañas principales de navegación (Incluyendo Fundamentos y Medición a campo)
+# Pestañas principales de navegación
 tab_fund, tab_med, tab_resumen, tab_vel, tab_acum, tab_sort = st.tabs([
     "📖 Fundamentos", 
     "🛠️ Medición a campo", 
@@ -230,11 +229,11 @@ if archivo_subido is not None:
                 }
                 
                 resultados_globales.append({
-                    'Determinación / Hoja': hoja,
-                    'Infiltración Básica ib (cm/h)': round(ib_val, 4),
-                    'Sorptividad S (cm·h⁻⁰'⁵)': round(s_val, 4),
-                    'Parámetro A (cm/h)': round(a_val, 4),
-                    'R² (Philip)': round(r2_val, 4)
+                    'Determinacion / Hoja': hoja,
+                    'Infiltracion Basica ib (cm/h)': round(ib_val, 4),
+                    'Sorptividad S (cm*h^-0.5)': round(s_val, 4),
+                    'Parametro A (cm/h)': round(a_val, 4),
+                    'R2 (Philip)': round(r2_val, 4)
                 })
         
         df_resumen_global = pd.DataFrame(resultados_globales)
@@ -247,23 +246,22 @@ if archivo_subido is not None:
             st.markdown("---")
             st.subheader("Valores promedio del conjunto de datos")
             
-            # Cálculo de promedios y coeficientes de variación (CV %)
             if not df_resumen_global.empty:
                 medias = df_resumen_global.mean(numeric_only=True)
                 stdesv = df_resumen_global.std(numeric_only=True)
                 cvs = (stdesv / medias) * 100
                 
                 df_estadistica = pd.DataFrame({
-                    'Parámetro': ['Infiltración Básica (ib)', 'Sorptividad (S)', 'Parámetro A', 'R² (Philip)'],
+                    'Parametro': ['Infiltracion Basica (ib)', 'Sorptividad (S)', 'Parametro A', 'R2 (Philip)'],
                     'Promedio': [medias.iloc[0], medias.iloc[1], medias.iloc[2], medias.iloc[3]],
-                    'Desviación Estándar': [stdesv.iloc[0], stdesv.iloc[1], stdesv.iloc[2], stdesv.iloc[3]],
-                    'Coeficiente de Variación (CV %)': [cvs.iloc[0], cvs.iloc[1], cvs.iloc[2], cvs.iloc[3]]
+                    'Desviacion Estandar': [stdesv.iloc[0], stdesv.iloc[1], stdesv.iloc[2], stdesv.iloc[3]],
+                    'Coeficiente de Variacion (CV %)': [cvs.iloc[0], cvs.iloc[1], cvs.iloc[2], cvs.iloc[3]]
                 })
                 
                 st.dataframe(df_estadistica.style.format({
                     'Promedio': '{:.3f}',
-                    'Desviación Estándar': '{:.3f}',
-                    'Coeficiente de Variación (CV %)': '{:.2f}%'
+                    'Desviacion Estandar': '{:.3f}',
+                    'Coeficiente de Variacion (CV %)': '{:.2f}%'
                 }), use_container_width=True)
             
             st.markdown("---")
