@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import linregress
+from scipy.optimize import curve_fit
 
 # Configuración de la página con perfil de suelo (🌍) y azul Francia oscuro
 st.set_page_config(
@@ -56,7 +57,7 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# Título y subtítulo actualizados
+# Título y subtítulo
 st.title("Medición y Análisis de Infiltración a Campo con Tensiómetro de Disco")
 st.subheader("Aplicación de la Ecuación de Philip")
 
@@ -99,14 +100,13 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# Pestañas principales de navegación
-tab_fund, tab_med, tab_resumen, tab_vel, tab_acum, tab_sort = st.tabs([
+# Pestañas principales de navegación (Sin la pestaña de Philip gráfica)
+tab_fund, tab_med, tab_resumen, tab_vel, tab_acum = st.tabs([
     "📖 Fundamentos", 
     "🛠️ Medición a campo", 
     "📊 Planillas resumen", 
     "📈 Velocidad de infiltración", 
-    "📉 Lámina acumulada", 
-    "📐 Ecuación de Philip"
+    "📉 Lámina acumulada"
 ])
 
 with tab_fund:
@@ -213,34 +213,48 @@ if archivo_subido is not None:
                 else:
                     ib_val = df['Vel_Infiltracion_cm_h'].iloc[-1]
                 
-                # Regresión para S y A
+                # Regresión lineal para S y A
                 df_reg = df.iloc[1:].copy()
                 if len(df_reg) >= 2:
                     slope, intercept, r_val, p_val, std_err = linregress(df_reg['Raiz_t'], df_reg['I_sobre_Raiz_t'])
                     s_val = intercept
                     a_val = slope
-                    r2_val = r_val**2
                 else:
-                    s_val, a_val, r2_val = 0.0, 0.0, 0.0
+                    s_val, a_val = 0.0, 0.0
                 
+                # Ajuste exponencial para velocidad: i(t) = a * exp(-b * t) + c
+                t_vel = df['Tiempo_min'].values[1:]
+                v_vel = df['Vel_Infiltracion_cm_h'].values[1:]
+                
+                def exp_func(t, a, b, c):
+                    return a * np.exp(-b * t) + c
+                
+                t_fit = np.linspace(t_vel.min(), t_vel.max(), 100)
+                v_fit = np.zeros_like(t_fit)
+                
+                try:
+                    popt, _ = curve_fit(exp_func, t_vel, v_vel, p0=[30, 0.1, ib_val], bounds=([-np.inf, 0, -np.inf], [np.inf, np.inf, np.inf]), maxfev=5000)
+                    v_fit = exp_func(t_fit, *popt)
+                except:
+                    v_fit = np.full_like(t_fit, ib_val)
+
                 diccionario_datos[hoja] = {
-                    'df': df, 'df_reg': df_reg,
-                    'ib': ib_val, 'S': s_val, 'A': a_val, 'R2': r2_val
+                    'df': df, 'ib': ib_val, 'S': s_val, 'A': a_val,
+                    't_fit': t_fit, 'v_fit': v_fit
                 }
                 
                 resultados_globales.append({
-                    'Determinacion / Hoja': hoja,
-                    'Infiltracion Basica ib (cm/h)': round(ib_val, 4),
+                    'Muestra': hoja,
+                    'Infiltración básica Ib (cm/h)': round(ib_val, 4),
                     'Sorptividad S (cm*h^-0.5)': round(s_val, 4),
-                    'Parametro A (cm/h)': round(a_val, 4),
-                    'R2 (Philip)': round(r2_val, 4)
+                    'Parámetro A de Ecuación de Philip (cm/h)': round(a_val, 4)
                 })
         
         df_resumen_global = pd.DataFrame(resultados_globales)
         
         with tab_resumen:
-            st.header("Planillas resumen y Estadísticas")
-            st.markdown("Resumen de parámetros hidráulicos obtenidos para cada determinación (hoja) del archivo Excel:")
+            st.header("Planillas resumen")
+            st.markdown("Resumen de parámetros hidráulicos obtenidos para cada determinación (muestra) del archivo Excel:")
             st.dataframe(df_resumen_global, use_container_width=True)
             
             st.markdown("---")
@@ -252,16 +266,16 @@ if archivo_subido is not None:
                 cvs = (stdesv / medias) * 100
                 
                 df_estadistica = pd.DataFrame({
-                    'Parametro': ['Infiltracion Basica (ib)', 'Sorptividad (S)', 'Parametro A', 'R2 (Philip)'],
-                    'Promedio': [medias.iloc[0], medias.iloc[1], medias.iloc[2], medias.iloc[3]],
-                    'Desviacion Estandar': [stdesv.iloc[0], stdesv.iloc[1], stdesv.iloc[2], stdesv.iloc[3]],
-                    'Coeficiente de Variacion (CV %)': [cvs.iloc[0], cvs.iloc[1], cvs.iloc[2], cvs.iloc[3]]
+                    'Parámetro': ['Infiltración básica (Ib)', 'Sorptividad (S)', 'Parámetro A de Ecuación de Philip'],
+                    'Promedio': [medias.iloc[0], medias.iloc[1], medias.iloc[2]],
+                    'Desviación Estándar': [stdesv.iloc[0], stdesv.iloc[1], stdesv.iloc[2]],
+                    'Coeficiente de Variación (CV %)': [cvs.iloc[0], cvs.iloc[1], cvs.iloc[2]]
                 })
                 
                 st.dataframe(df_estadistica.style.format({
                     'Promedio': '{:.3f}',
-                    'Desviacion Estandar': '{:.3f}',
-                    'Coeficiente de Variacion (CV %)': '{:.2f}%'
+                    'Desviación Estándar': '{:.3f}',
+                    'Coeficiente de Variación (CV %)': '{:.2f}%'
                 }), use_container_width=True)
             
             st.markdown("---")
@@ -275,16 +289,20 @@ if archivo_subido is not None:
 
         with tab_vel:
             st.header("Gráficos de Velocidad de Infiltración")
-            st.markdown("Evolución de la velocidad instantánea y línea de Infiltración Básica ($i_b$) para cada determinación a campo:")
+            st.markdown("Evolución de la velocidad instantánea (valores observados), curva de ajuste exponencial y línea de Infiltración Básica ($i_b$):")
             
             for hoja, datos in diccionario_datos.items():
-                st.subheader(f"Ensayo: {hoja}")
+                st.subheader(f"Muestra: {hoja}")
                 df_h = datos['df']
                 ib_h = datos['ib']
+                t_fit = datos['t_fit']
+                v_fit = datos['v_fit']
                 
                 fig, ax = plt.subplots(figsize=(9, 4))
-                ax.plot(df_h['Tiempo_min'][1:], df_h['Vel_Infiltracion_cm_h'][1:], marker='o', color='#2563EB', linewidth=2, label='Velocidad medida ($i_i$)')
-                ax.axhline(y=ib_h, color='#DC2626', linestyle='--', linewidth=1.5, label=f'Infiltración Básica ($i_b$ = {ib_h:.2f} cm/h)')
+                ax.plot(df_h['Tiempo_min'][1:], df_h['Vel_Infiltracion_cm_h'][1:], marker='o', color='#2563EB', linestyle='', label='Valores observados ($i_i$)')
+                ax.plot(t_fit, v_fit, color='#0F172A', linestyle='-', linewidth=2, label='Curva de ajuste exponencial')
+                ax.axhline(y=ib_h, color='#DC2626', linestyle='--', linewidth=1.5, label=f'Infiltración básica $i_b$ = {ib_h:.2f} cm/h')
+                
                 ax.set_xlabel('Tiempo (minutos)', fontweight='bold', color='#1E3A8A')
                 ax.set_ylabel('Velocidad (cm/h)', fontweight='bold', color='#1E3A8A')
                 ax.set_title(f'Tasa de Infiltración - {hoja}', fontweight='bold', color='#1E3A8A')
@@ -295,10 +313,10 @@ if archivo_subido is not None:
 
         with tab_acum:
             st.header("Gráficos de Lámina Acumulada")
-            st.markdown("Curvas de infiltración acumulada con sus puntos medidos para cada determinación:")
+            st.markdown("Curvas de infiltración acumulada con sus puntos medidos para cada muestra:")
             
             for hoja, datos in diccionario_datos.items():
-                st.subheader(f"Ensayo: {hoja}")
+                st.subheader(f"Muestra: {hoja}")
                 df_h = datos['df']
                 
                 fig, ax = plt.subplots(figsize=(9, 4))
@@ -306,33 +324,6 @@ if archivo_subido is not None:
                 ax.set_xlabel('Tiempo (minutos)', fontweight='bold', color='#1E3A8A')
                 ax.set_ylabel('Lámina Acumulada (cm)', fontweight='bold', color='#1E3A8A')
                 ax.set_title(f'Curva Acumulada - {hoja}', fontweight='bold', color='#1E3A8A')
-                ax.grid(True, linestyle=':', alpha=0.6)
-                ax.legend()
-                st.pyplot(fig)
-                st.markdown("---")
-
-        with tab_sort:
-            st.header("Ecuación de Philip y Estimación Gráfica de la Sortividad ($S$)")
-            
-            for hoja, datos in diccionario_datos.items():
-                st.subheader(f"Ensayo: {hoja}")
-                df_reg = datos['df_reg']
-                s_val = datos['S']
-                a_val = datos['A']
-                r2_val = datos['R2']
-                
-                st.markdown(f"""
-                * **Sorptividad ($S$):** `{s_val:.4f} cm·h⁻⁰'⁵` | **Parámetro A:** `{a_val:.4f} cm/h` | **R²:** `{r2_val:.4f}`
-                """)
-                
-                fig, ax = plt.subplots(figsize=(9, 4))
-                ax.scatter(df_reg['Raiz_t'], df_reg['I_sobre_Raiz_t'], color='#2563EB', s=50, label='Datos transformados')
-                y_fit = s_val + a_val * df_reg['Raiz_t']
-                ax.plot(df_reg['Raiz_t'], y_fit, color='#DC2626', linestyle='-', linewidth=2, label=f'Ajuste lineal ($S$ = {s_val:.2f})')
-                
-                ax.set_xlabel('Raíz cuadrada del tiempo ($\\sqrt{t}$ en h$^{0.5}$)', fontweight='bold', color='#1E3A8A')
-                ax.set_ylabel('$I / \\sqrt{t}$ (cm / h$^{0.5}$)', fontweight='bold', color='#1E3A8A')
-                ax.set_title(f'Linealización de Philip - {hoja}', fontweight='bold', color='#1E3A8A')
                 ax.grid(True, linestyle=':', alpha=0.6)
                 ax.legend()
                 st.pyplot(fig)
