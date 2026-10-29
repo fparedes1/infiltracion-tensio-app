@@ -83,15 +83,13 @@ with st.sidebar:
         help="Cada hoja debe representar una determinación a campo con columnas: Tiempo (min) y Lámina (cm)"
     )
     
-    if archivo_subido is not None:
-        st.markdown("---")
-        st.header("📋 Cálculos y Resultados")
-        try:
-            xls_temp = pd.ExcelFile(archivo_subido)
-            sheet_names_temp = xls_temp.sheet_names
-            hoja_seleccionada = st.selectbox("Seleccione la hoja de campo:", sheet_names_temp)
-        except:
-            hoja_seleccionada = None
+    # Instrucciones solicitadas en la barra lateral con ícono 📋
+    st.markdown("""
+        <div style="background-color: #1E3A8A; padding: 10px; border-radius: 6px; color: #E2E8F0; font-size: 13px; margin-top: 10px;">
+            📋 <b>Instrucciones:</b><br>
+            Cada hoja del archivo Excel debe contener las lecturas de campo en dos columnas (Columna 1: Tiempo en minutos, Columna 2: Lámina en cm).
+        </div>
+    """, unsafe_allow_html=True)
 
 # Pie de página fijo requerido
 st.markdown("""
@@ -100,7 +98,7 @@ st.markdown("""
     </div>
 """, unsafe_allow_html=True)
 
-# Pestañas principales de navegación (Sin la pestaña de Philip gráfica)
+# Pestañas principales de navegación
 tab_fund, tab_med, tab_resumen, tab_vel, tab_acum = st.tabs([
     "📖 Fundamentos", 
     "🛠️ Medición a campo", 
@@ -300,7 +298,8 @@ if archivo_subido is not None:
                 
                 fig, ax = plt.subplots(figsize=(9, 4))
                 ax.plot(df_h['Tiempo_min'][1:], df_h['Vel_Infiltracion_cm_h'][1:], marker='o', color='#2563EB', linestyle='', label='Valores observados ($i_i$)')
-                ax.plot(t_fit, v_fit, color='#0F172A', linestyle='-', linewidth=2, label='Curva de ajuste exponencial')
+                # Curva de ajuste exponencial graficada SIN etiqueta en la leyenda
+                ax.plot(t_fit, v_fit, color='#0F172A', linestyle='-', linewidth=2)
                 ax.axhline(y=ib_h, color='#DC2626', linestyle='--', linewidth=1.5, label=f'Infiltración básica $i_b$ = {ib_h:.2f} cm/h')
                 
                 ax.set_xlabel('Tiempo (minutos)', fontweight='bold', color='#1E3A8A')
