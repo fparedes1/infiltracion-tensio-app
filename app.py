@@ -193,7 +193,6 @@ with tab_med:
 
 # Función auxiliar para determinar la clase de infiltración y color (Semáforo/Clases USDA adaptadas a cm/h)
 def clasificar_infiltracion(ib_cm_h):
-    # Convertimos cm/h a mm/h para comparar fácilmente con los rangos base
     ib_mm_h = ib_cm_h * 10.0
     if ib_mm_h > 508:
         return "Muy rápida (> 50,8 cm/h)", "🔵 Azul", "Infiltración elevada. Evaluar si puede favorecer la percolación o dificultar el manejo del agua."
@@ -279,7 +278,6 @@ if archivo_subido is not None:
                 except:
                     v_fit = np.full_like(t_fit, ib_val)
 
-                # Clasificación automática por semáforo
                 clase_inf, semaforo_inf, desc_inf = clasificar_infiltracion(ib_val)
 
                 diccionario_datos[hoja] = {
@@ -293,7 +291,7 @@ if archivo_subido is not None:
                     'Infiltración básica Ib (cm/h)': round(ib_val, 4),
                     'Clase (USDA)': clase_inf.split(" (")[0],
                     'Indicador': semaforo_inf,
-                    'Sorptividad S (cm·h⁻⁰'⁵)': round(s_val, 4),
+                    'Sorptividad S (cm*h^-0.5)': round(s_val, 4),
                     'Parámetro A de Ecuación de Philip (cm/h)': round(a_val, 4)
                 })
         
@@ -304,7 +302,6 @@ if archivo_subido is not None:
             st.markdown("Resumen de parámetros hidráulicos y clasificación automática obtenida para cada determinación (muestra):")
             st.dataframe(df_resumen_global, use_container_width=True)
             
-            # Detalle visual por muestra con semáforos
             st.markdown("---")
             st.subheader("🚦 Interpretación automática por muestra")
             for hoja, datos in diccionario_datos.items():
@@ -316,10 +313,9 @@ if archivo_subido is not None:
             st.markdown("---")
             st.subheader("Valores promedio del conjunto de datos")
             
-            # Creamos un df numérico limpio para promedios globales sin alterar las columnas de texto
             df_num_stats = pd.DataFrame({
                 'Infiltración básica Ib (cm/h)': [d['ib'] for d in diccionario_datos.values()],
-                'Sorptividad S (cm·h⁻⁰'⁵)': [d['S'] for d in diccionario_datos.values()],
+                'Sorptividad S (cm*h^-0.5)': [d['S'] for d in diccionario_datos.values()],
                 'Parámetro A de Ecuación de Philip (cm/h)': [d['A'] for d in diccionario_datos.values()]
             })
             
@@ -341,7 +337,6 @@ if archivo_subido is not None:
                     'Coeficiente de Variación (CV %)': '{:.2f}%'
                 }), use_container_width=True)
                 
-                # Gráfico de Boxplot para evaluar la variabilidad de cada parámetro
                 st.markdown("---")
                 st.subheader("Análisis de Variabilidad (Boxplot del Conjunto de Datos)")
                 
@@ -349,7 +344,7 @@ if archivo_subido is not None:
                 
                 cols_boxplot = [
                     ('Infiltración básica Ib (cm/h)', 'Ib (cm/h)', '#2563EB'),
-                    ('Sorptividad S (cm·h⁻⁰'⁵)', 'S (cm·h⁻⁰'⁵)', '#1E3A8A'),
+                    ('Sorptividad S (cm*h^-0.5)', 'S (cm*h^-0.5)', '#1E3A8A'),
                     ('Parámetro A de Ecuación de Philip (cm/h)', 'A (cm/h)', '#0F172A')
                 ]
                 
@@ -368,7 +363,6 @@ if archivo_subido is not None:
                 st.pyplot(fig_box)
             
             st.markdown("---")
-            # Exportamos un CSV limpio con los parámetros principales
             df_export = pd.DataFrame([{
                 'Muestra': k,
                 'Infiltracion_basica_ib_cm_h': v['ib'],
