@@ -83,7 +83,7 @@ with st.sidebar:
         help="Cada hoja debe representar una determinación a campo con columnas: Tiempo (min) y Lámina (cm)"
     )
     
-    # Instrucciones solicitadas en la barra lateral con ícono 📋
+    # Instrucciones en la barra lateral con ícono 📋
     st.markdown("""
         <div style="background-color: #1E3A8A; padding: 10px; border-radius: 6px; color: #E2E8F0; font-size: 13px; margin-top: 10px;">
             📋 <b>Instrucciones:</b><br>
@@ -139,11 +139,33 @@ with tab_fund:
     * **Estimación de la Conductividad Hidráulica $K$**: En régimen estacionario y bajo la aproximación de flujo de disco (Wooding / Zhang), la conductividad hidráulica no saturada $K(h_0)$ a la succión aplicada se estima directamente a partir del tramo final estabilizado de la curva acumulada o de la tasa básica[cite: 1]:
       $$K(h_0) \\approx i_b$$
 
-    ### 5. Referencias Bibliográficas
-    * Philip, J. R. (1957). The theory of infiltration: 4. Sorptivity and algebraic equations for infiltration. *Soil Science*, 84(3), 257-264[cite: 1].
-    * Wooding, R. A. (1968). Steady infiltration from a shallow circular pond. *Water Resources Research*, 4(6), 1259-1273[cite: 1].
-    * Zhang, R. (1997). Determination of soil hydraulic properties from disk infiltrometer measurements. *Soil Science Society of America Journal*, 61(4), 1024-1030[cite: 1].
-    * Perdok, U. D., et al. (1996). A disc infiltrometer to measure hydraulic properties of vadose zone. *Journal of Plant Nutrition and Soil Science*[cite: 1].
+    ### 5. Clasificación general en ocho clases
+    El *Soil Quality Test Kit Guide* del USDA presenta una clasificación de ocho clases de infiltración, desde muy rápida hasta prácticamente impermeable. La clasificación se basa en valores de infiltración estabilizada y recoge referencias clave como Hillel (1982) y Lowery et al. (1996).
+    """)
+    
+    # Cuadro de ocho clases expresado en cm/h
+    df_clases = pd.DataFrame({
+        'Clase': [
+            'Muy rápida', 'Rápida', 'Moderadamente rápida', 'Moderada', 
+            'Moderadamente lenta', 'Lenta', 'Muy lenta', 'Prácticamente impermeable'
+        ],
+        'Infiltración básica (cm/h)': [
+            '> 50,8', '15,24 – 50,8', '5,08 – 15,24', '1,52 – 5,08', 
+            '0,508 – 1,52', '0,152 – 0,508', '0,0038 – 0,152', '< 0,0038'
+        ]
+    })
+    st.table(df_clases)
+
+    st.markdown("""
+    ### 6. Referencias Bibliográficas
+    * **FAO**. Annex 2: Infiltration rate and infiltration test. Presenta valores de infiltración básica para grupos texturales y un procedimiento de medición de campo.
+    * **USDA, Agricultural Research Service, Natural Resources Conservation Service, Soil Quality Institute**. (1999). *Soil Quality Test Kit Guide*. Incluye procedimientos de campo e interpretación de indicadores de calidad del suelo, incluida la infiltración.
+    * **Hillel, D.** (1982). *Introduction to Soil Physics*. Academic Press. Obra de referencia sobre física del suelo; citada en el manual de USDA para la clasificación de infiltración.
+    * **Lowery, B., Arshad, M. A., Lal, R., & Hickey, W. J.** (1996). Soil water parameters and soil quality. En J. W. Doran & A. J. Jones (eds.), *Methods for Assessing Soil Quality*, pp. 143–157. Soil Science Society of America, Special Publication 49.
+    * **Philip, J. R.** (1957). The theory of infiltration: 4. Sorptivity and algebraic equations for infiltration. *Soil Science*, 84(3), 257-264[cite: 1].
+    * **Wooding, R. A.** (1968). Steady infiltration from a shallow circular pond. *Water Resources Research*, 4(6), 1259-1273[cite: 1].
+    * **Zhang, R.** (1997). Determination of soil hydraulic properties from disk infiltrometer measurements. *Soil Science Society of America Journal*, 61(4), 1024-1030[cite: 1].
+    * **Perdok, U. D., et al.** (1996). A disc infiltrometer to measure hydraulic properties of vadose zone. *Journal of Plant Nutrition and Soil Science*[cite: 1].
     """)
 
 with tab_med:
@@ -168,6 +190,27 @@ with tab_med:
     6. **Protección contra factores externos (si es necesario)**: Instalar una sombrilla o pantalla protectora contra la radiación solar directa sobre el reservorio del equipo para evitar dilataciones térmicas del agua en la columna piezométrica que alteren las lecturas de nivel[cite: 2].
     7. **Inicio del ensayo**: Abrir la llave de paso entre el reservorio y el disco de contacto exactamente en el tiempo $T=0$. Registre los descensos de la lámina de agua en el tubo graduado a los tiempos preestablecidos (por ejemplo, a los 0,5, 1, 2, 3, 4, 5, 10, 15... hasta los 70 minutos o hasta alcanzar la estabilización completa del flujo)[cite: 2].
     """)
+
+# Función auxiliar para determinar la clase de infiltración y color (Semáforo/Clases USDA adaptadas a cm/h)
+def clasificar_infiltracion(ib_cm_h):
+    # Convertimos cm/h a mm/h para comparar fácilmente con los rangos base
+    ib_mm_h = ib_cm_h * 10.0
+    if ib_mm_h > 508:
+        return "Muy rápida (> 50,8 cm/h)", "🔵 Azul", "Infiltración elevada. Evaluar si puede favorecer la percolación o dificultar el manejo del agua."
+    elif ib_mm_h >= 152.4:
+        return "Rápida (15,24 - 50,8 cm/h)", "🟢 Verde", "Infiltración relativamente favorable para numerosos usos agrícolas."
+    elif ib_mm_h >= 50.8:
+        return "Moderadamente rápida (5,08 - 15,24 cm/h)", "🟢 Verde", "Infiltración favorable para el desarrollo radicular y retención hídrica."
+    elif ib_mm_h >= 15.2:
+        return "Moderada (1,52 - 5,08 cm/h)", "🟡 Amarillo", "Infiltración intermedia. Interpretar según el suelo y el sistema productivo."
+    elif ib_mm_h >= 5.08:
+        return "Moderadamente lenta (0,508 - 1,52 cm/h)", "🟠 Naranja", "Infiltración relativamente baja. Evaluar textura, estructura, humedad y manejo."
+    elif ib_mm_h >= 1.52:
+        return "Lenta (0,152 - 0,508 cm/h)", "🟠 Naranja", "Infiltración baja. Investigar posibles limitaciones físicas, estructurales o de drenaje."
+    elif ib_mm_h >= 0.038:
+        return "Muy lenta (0,0038 - 0,152 cm/h)", "🔴 Rojo", "Infiltración muy baja. Riesgo de encharcamiento o escorrentía superficial."
+    else:
+        return "Prácticamente impermeable (< 0,0038 cm/h)", "🔴 Rojo", "Suelo prácticamente impermeable. Severas restricciones de drenaje."
 
 # Procesamiento de datos cuando se carga un archivo Excel
 if archivo_subido is not None:
@@ -236,15 +279,21 @@ if archivo_subido is not None:
                 except:
                     v_fit = np.full_like(t_fit, ib_val)
 
+                # Clasificación automática por semáforo
+                clase_inf, semaforo_inf, desc_inf = clasificar_infiltracion(ib_val)
+
                 diccionario_datos[hoja] = {
                     'df': df, 'ib': ib_val, 'S': s_val, 'A': a_val,
-                    't_fit': t_fit, 'v_fit': v_fit
+                    't_fit': t_fit, 'v_fit': v_fit,
+                    'clase': clase_inf, 'semaforo': semaforo_inf, 'desc': desc_inf
                 }
                 
                 resultados_globales.append({
                     'Muestra': hoja,
                     'Infiltración básica Ib (cm/h)': round(ib_val, 4),
-                    'Sorptividad S (cm*h^-0.5)': round(s_val, 4),
+                    'Clase (USDA)': clase_inf.split(" (")[0],
+                    'Indicador': semaforo_inf,
+                    'Sorptividad S (cm·h⁻⁰'⁵)': round(s_val, 4),
                     'Parámetro A de Ecuación de Philip (cm/h)': round(a_val, 4)
                 })
         
@@ -252,15 +301,31 @@ if archivo_subido is not None:
         
         with tab_resumen:
             st.header("Planillas resumen")
-            st.markdown("Resumen de parámetros hidráulicos obtenidos para cada determinación (muestra) del archivo Excel:")
+            st.markdown("Resumen de parámetros hidráulicos y clasificación automática obtenida para cada determinación (muestra):")
             st.dataframe(df_resumen_global, use_container_width=True)
             
+            # Detalle visual por muestra con semáforos
+            st.markdown("---")
+            st.subheader("🚦 Interpretación automática por muestra")
+            for hoja, datos in diccionario_datos.items():
+                st.markdown(f"""
+                * **Muestra `{hoja}`** $\\rightarrow$ **$i_b$ = {datos['ib']:.3f} cm/h** | **Clase:** {datos['clase']} | **Semáforo:** {datos['semaforo']}  
+                  *Interpretación:* {datos['desc']}
+                """)
+
             st.markdown("---")
             st.subheader("Valores promedio del conjunto de datos")
             
-            if not df_resumen_global.empty:
-                medias = df_resumen_global.mean(numeric_only=True)
-                stdesv = df_resumen_global.std(numeric_only=True)
+            # Creamos un df numérico limpio para promedios globales sin alterar las columnas de texto
+            df_num_stats = pd.DataFrame({
+                'Infiltración básica Ib (cm/h)': [d['ib'] for d in diccionario_datos.values()],
+                'Sorptividad S (cm·h⁻⁰'⁵)': [d['S'] for d in diccionario_datos.values()],
+                'Parámetro A de Ecuación de Philip (cm/h)': [d['A'] for d in diccionario_datos.values()]
+            })
+            
+            if not df_num_stats.empty:
+                medias = df_num_stats.mean()
+                stdesv = df_num_stats.std()
                 cvs = (stdesv / medias) * 100
                 
                 df_estadistica = pd.DataFrame({
@@ -275,9 +340,44 @@ if archivo_subido is not None:
                     'Desviación Estándar': '{:.3f}',
                     'Coeficiente de Variación (CV %)': '{:.2f}%'
                 }), use_container_width=True)
+                
+                # Gráfico de Boxplot para evaluar la variabilidad de cada parámetro
+                st.markdown("---")
+                st.subheader("Análisis de Variabilidad (Boxplot del Conjunto de Datos)")
+                
+                fig_box, axes = plt.subplots(1, 3, figsize=(12, 4))
+                
+                cols_boxplot = [
+                    ('Infiltración básica Ib (cm/h)', 'Ib (cm/h)', '#2563EB'),
+                    ('Sorptividad S (cm·h⁻⁰'⁵)', 'S (cm·h⁻⁰'⁵)', '#1E3A8A'),
+                    ('Parámetro A de Ecuación de Philip (cm/h)', 'A (cm/h)', '#0F172A')
+                ]
+                
+                for idx, (col_name, label_name, color_box) in enumerate(cols_boxplot):
+                    ax = axes[idx]
+                    ax.boxplot(df_num_stats[col_name], patch_artist=True,
+                               boxprops=dict(facecolor=color_box, color='#0F172A', linewidth=1.5),
+                               medianprops=dict(color='white', linewidth=2),
+                               whiskerprops=dict(color='#0F172A', linewidth=1.5),
+                               capprops=dict(color='#0F172A', linewidth=1.5))
+                    ax.set_title(label_name, fontweight='bold', color='#1E3A8A')
+                    ax.grid(True, linestyle=':', alpha=0.6)
+                    ax.set_xticklabels([label_name])
+                
+                plt.tight_layout()
+                st.pyplot(fig_box)
             
             st.markdown("---")
-            csv_resumen = df_resumen_global.to_csv(index=False).encode('utf-8')
+            # Exportamos un CSV limpio con los parámetros principales
+            df_export = pd.DataFrame([{
+                'Muestra': k,
+                'Infiltracion_basica_ib_cm_h': v['ib'],
+                'Clase_USDA': v['clase'],
+                'Sorptividad_S': v['S'],
+                'Parametro_A': v['A']
+            } for k, v in diccionario_datos.items()])
+            
+            csv_resumen = df_export.to_csv(index=False).encode('utf-8')
             st.download_button(
                 label="📥 Descargar Resultados",
                 data=csv_resumen,
@@ -290,7 +390,7 @@ if archivo_subido is not None:
             st.markdown("Evolución de la velocidad instantánea (valores observados), curva de ajuste exponencial y línea de Infiltración Básica ($i_b$):")
             
             for hoja, datos in diccionario_datos.items():
-                st.subheader(f"Muestra: {hoja}")
+                st.subheader(f"Muestra: {hoja} | Clase: {datos['clase']} ({datos['semaforo']})")
                 df_h = datos['df']
                 ib_h = datos['ib']
                 t_fit = datos['t_fit']
@@ -298,7 +398,6 @@ if archivo_subido is not None:
                 
                 fig, ax = plt.subplots(figsize=(9, 4))
                 ax.plot(df_h['Tiempo_min'][1:], df_h['Vel_Infiltracion_cm_h'][1:], marker='o', color='#2563EB', linestyle='', label='Valores observados ($i_i$)')
-                # Curva de ajuste exponencial graficada SIN etiqueta en la leyenda
                 ax.plot(t_fit, v_fit, color='#0F172A', linestyle='-', linewidth=2)
                 ax.axhline(y=ib_h, color='#DC2626', linestyle='--', linewidth=1.5, label=f'Infiltración básica $i_b$ = {ib_h:.2f} cm/h')
                 
