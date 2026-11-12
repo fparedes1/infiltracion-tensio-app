@@ -4,6 +4,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import linregress
 from scipy.optimize import curve_fit
+import io
+from docx import Document
+from docx.shared import Inches
 
 # Configuración de la página con perfil de suelo (🌍) y azul Francia oscuro
 st.set_page_config(
@@ -111,32 +114,32 @@ with tab_fund:
     st.header("Fundamentos del Ensayo")
     st.markdown("""
     ### 1. Introducción
-    El ensayo de infiltración con tensiómetro de disco permite determinar las propiedades hidráulicas del suelo no saturado *in situ*, operando bajo un potencial matricial (succión) controlado. Esto evita el flujo a través de los macroporos preferenciales vacíos, midiendo el efecto de la matriz del suelo[cite: 1].
+    El ensayo de infiltración con tensiómetro de disco permite determinar las propiedades hidráulicas del suelo no saturado *in situ*, operando bajo un potencial matricial (succión) controlado. Esto evita el flujo a través de los macroporos preferenciales vacíos, midiendo el efecto de la matriz del suelo.
 
     ### 2. Ecuación de Philip
-    Para modelar la infiltración unidimensional de corta y mediana duración, se emplea la solución analítica propuesta por J. R. Philip (1957)[cite: 1]:
+    Para modelar la infiltración unidimensional de corta y mediana duración, se emplea la solución analítica propuesta por J. R. Philip (1957):
     
     $$I(t) = S \\cdot t^{0,5} + A \\cdot t$$
 
     Donde:
-    * **$I(t)$**: Infiltración acumulada $L$ (cm)[cite: 1].
-    * **$t$**: Tiempo transcurrido $T$ (minutos u horas)[cite: 1].
-    * **$S$**: Sorptividad $L \\cdot T^{-0,5}$ (capacidad inicial de succión de la matriz del suelo)[cite: 1].
-    * **$A$**: Parámetro de transmisión $L \\cdot T^{-1}$ (relacionado con las fuerzas gravitacionales y el flujo a través de la matriz del suelo)[cite: 1].
+    * **$I(t)$**: Infiltración acumulada $L$ (cm).
+    * **$t$**: Tiempo transcurrido $T$ (minutos u horas).
+    * **$S$**: Sorptividad $L \\cdot T^{-0,5}$ (capacidad inicial de succión de la matriz del suelo).
+    * **$A$**: Parámetro de transmisión $L \\cdot T^{-1}$ (relacionado con las fuerzas gravitacionales y el flujo a través de la matriz del suelo).
 
     ### 3. Linealización y Cálculo de Parámetros
-    Para aislar y calcular experimentalmente la sorptividad ($S$) y el parámetro ($A$) a partir de los datos de campo, se transforma la ecuación de Philip dividiendo ambos miembros por la raíz cuadrada del tiempo ($\\sqrt{t}$)[cite: 1]:
+    Para aislar y calcular experimentalmente la sorptividad ($S$) y el parámetro ($A$) a partir de los datos de campo, se transforma la ecuación de Philip dividiendo ambos miembros por la raíz cuadrada del tiempo ($\\sqrt{t}$):
     
     $$\\frac{I(t)}{\\sqrt{t}} = S + A \\cdot \\sqrt{t}$$
 
-    Al representar gráficamente esta relación (en el eje Y: $\\frac{I}{\\sqrt{t}}$, y en el eje X: $\\sqrt{t}$)[cite: 1]:
-    * La **Ordenada al Origen (Intersección)** corresponde a la Sorptividad ($S$)[cite: 1].
-    * La **Pendiente** de la recta resultante corresponde al parámetro de transmisión ($A$)[cite: 1].
+    Al representar gráficamente esta relación (en el eje Y: $\\frac{I}{\\sqrt{t}}$, y en el eje X: $\\sqrt{t}$):
+    * La **Ordenada al Origen (Intersección)** corresponde a la Sorptividad ($S$).
+    * La **Pendiente** de la recta resultante corresponde al parámetro de transmisión ($A$).
 
     ### 4. Infiltración básica ($i_b$) y Conductividad hidráulica $K$
-    * **Infiltración Básica ($i_b$)**: Se alcanza cuando la tasa de infiltración se estabiliza hacia el final del ensayo, calculándose mediante la media aritmética de las últimas tasas instantáneas consecutivas[cite: 1]:
+    * **Infiltración Básica ($i_b$)**: Se alcanza cuando la tasa de infiltración se estabiliza hacia el final del ensayo, calculándose mediante la media aritmética de las últimas tasas instantáneas consecutivas:
       $$i_b = \\frac{1}{m} \\sum_{j=N-m+1}^{N} \\frac{I_j - I_{j-1}}{t_j - t_{j-1}}$$
-    * **Estimación de la Conductividad Hidráulica $K$**: En régimen estacionario y bajo la aproximación de flujo de disco (Wooding / Zhang), la conductividad hidráulica no saturada $K(h_0)$ a la succión aplicada se estima directamente a partir del tramo final estabilizado de la curva acumulada o de la tasa básica[cite: 1]:
+    * **Estimación de la Conductividad Hidráulica $K$**: En régimen estacionario y bajo la aproximación de flujo de disco (Wooding / Zhang), la conductividad hidráulica no saturada $K(h_0)$ a la succión aplicada se estima directamente a partir del tramo final estabilizado de la curva acumulada o de la tasa básica:
       $$K(h_0) \\approx i_b$$
 
     ### 5. Clasificación general en ocho clases
@@ -162,54 +165,54 @@ with tab_fund:
     * **USDA, Agricultural Research Service, Natural Resources Conservation Service, Soil Quality Institute**. (1999). *Soil Quality Test Kit Guide*. Incluye procedimientos de campo e interpretación de indicadores de calidad del suelo, incluida la infiltración.
     * **Hillel, D.** (1982). *Introduction to Soil Physics*. Academic Press. Obra de referencia sobre física del suelo; citada en el manual de USDA para la clasificación de infiltración.
     * **Lowery, B., Arshad, M. A., Lal, R., & Hickey, W. J.** (1996). Soil water parameters and soil quality. En J. W. Doran & A. J. Jones (eds.), *Methods for Assessing Soil Quality*, pp. 143–157. Soil Science Society of America, Special Publication 49.
-    * **Philip, J. R.** (1957). The theory of infiltration: 4. Sorptivity and algebraic equations for infiltration. *Soil Science*, 84(3), 257-264[cite: 1].
-    * **Wooding, R. A.** (1968). Steady infiltration from a shallow circular pond. *Water Resources Research*, 4(6), 1259-1273[cite: 1].
-    * **Zhang, R.** (1997). Determination of soil hydraulic properties from disk infiltrometer measurements. *Soil Science Society of America Journal*, 61(4), 1024-1030[cite: 1].
-    * **Perdok, U. D., et al.** (1996). A disc infiltrometer to measure hydraulic properties of vadose zone. *Journal of Plant Nutrition and Soil Science*[cite: 1].
+    * **Philip, J. R.** (1957). The theory of infiltration: 4. Sorptivity and algebraic equations for infiltration. *Soil Science*, 84(3), 257-264.
+    * **Wooding, R. A.** (1968). Steady infiltration from a shallow circular pond. *Water Resources Research*, 4(6), 1259-1273.
+    * **Zhang, R.** (1997). Determination of soil hydraulic properties from disk infiltrometer measurements. *Soil Science Society of America Journal*, 61(4), 1024-1030.
+    * **Perdok, U. D., et al.** (1996). A disc infiltrometer to measure hydraulic properties of vadose zone. *Journal of Plant Nutrition and Soil Science*.
     """)
 
 with tab_med:
     st.header("Guía para la medición a campo")
     st.markdown("""
     ### Materiales necesarios
-    * Tensiómetro / Infiltrómetro de disco calibrado y purgado[cite: 2].
-    * Anillos metálicos o de PVC de diámetro coincidente con la base del disco (habitualmente 20 cm de diámetro)[cite: 2].
-    * Arena fina tamizada (tamiz de 0,25 mm a 0,5 mm), limpia y seca o con ligera humedad de cohesión[cite: 2].
-    * Frasco lavador o rociador con agua destilada o desionizada[cite: 2].
-    * Nivel de burbuja[cite: 2].
-    * Espátula o cuchillo planero para enrasar la superficie[cite: 2].
-    * Agua para la recarga del reservorio[cite: 2].
-    * Cronómetro y planilla de campo (o dispositivo digital)[cite: 2].
+    * Tensiómetro / Infiltrómetro de disco calibrado y purgado.
+    * Anillos metálicos o de PVC de diámetro coincidente con la base del disco (habitualmente 20 cm de diámetro).
+    * Arena fina tamizada (tamiz de 0,25 mm a 0,5 mm), limpia y seca o con ligera humedad de cohesión.
+    * Frasco lavador o rociador con agua destilada o desionizada.
+    * Nivel de burbuja.
+    * Espátula o cuchillo planero para enrasar la superficie.
+    * Agua para la recarga del reservorio.
+    * Cronómetro y planilla de campo (o dispositivo digital).
 
     ### Paso a paso para la instalación a campo
-    1. **Selección y acondicionamiento del punto**: Elegir un sitio representativo, libre de grietas, piedras grandes o raíces superficiales gruesas. Retire con cuidado la vegetación herbácea viva a ras del suelo sin remover ni alterar la estructura superficial del suelo[cite: 2].
-    2. **Nivelación del terreno**: Colocar el anillo guía (preferentemente) o realizar una leve limpieza superficial horizontal utilizando la espátula. Verificar la horizontalidad apoyando el nivel de burbuja sobre el sector preparado[cite: 2].
-    3. **Capa de contacto (colocación de arena tamizada)**: Extender una capa muy fina (de 2 a 3 mm de espesor máximo) de arena fina tamizada sobre la superficie del suelo. Esto evita espacios de aire milimétricos que bloquearían el contacto hidráulico. Enrase suavemente con la espátula[cite: 2].
-    4. **Prueba de contacto e impregnación de la arena**: Humecer ligeramente la capa de arena con el rociador (sin encharcar) para asegurar la continuidad capilar inicial entre el suelo y la arena[cite: 2].
-    5. **Asentamiento del disco del infiltrómetro**: Llevar el tensiómetro de disco lleno y purgado (con la succión / potencial matricial $h_0$ ya fijado en la torre de burbujeo) y asentarlo verticalmente sobre la cama de arena tamizada mediante un movimiento vertical suave, evitando giros laterales que rompan la interfase[cite: 2].
-    6. **Protección contra factores externos (si es necesario)**: Instalar una sombrilla o pantalla protectora contra la radiación solar directa sobre el reservorio del equipo para evitar dilataciones térmicas del agua en la columna piezométrica que alteren las lecturas de nivel[cite: 2].
-    7. **Inicio del ensayo**: Abrir la llave de paso entre el reservorio y el disco de contacto exactamente en el tiempo $T=0$. Registre los descensos de la lámina de agua en el tubo graduado a los tiempos preestablecidos (por ejemplo, a los 0,5, 1, 2, 3, 4, 5, 10, 15... hasta los 70 minutos o hasta alcanzar la estabilización completa del flujo)[cite: 2].
+    1. **Selección y acondicionamiento del punto**: Elegir un sitio representativo, libre de grietas, piedras grandes o raíces superficiales gruesas. Retire con cuidado la vegetación herbácea viva a ras del suelo sin remover ni alterar la estructura superficial del suelo.
+    2. **Nivelación del terreno**: Colocar el anillo guía (preferentemente) o realizar una leve limpieza superficial horizontal utilizando la espátula. Verificar la horizontalidad apoyando el nivel de burbuja sobre el sector preparado.
+    3. **Capa de contacto (colocación de arena tamizada)**: Extender una capa muy fina (de 2 a 3 mm de espesor máximo) de arena fina tamizada sobre la superficie del suelo. Esto evita espacios de aire milimétricos que bloquearían el contacto hidráulico. Enrase suavemente con la espátula.
+    4. **Prueba de contacto e impregnación de la arena**: Humecer ligeramente la capa de arena con el rociador (sin encharcar) para asegurar la continuidad capilar inicial entre el suelo y la arena.
+    5. **Asentamiento del disco del infiltrómetro**: Llevar el tensiómetro de disco lleno y purgado (con la succión / potencial matricial $h_0$ ya fijado en la torre de burbujeo) y asentarlo verticalmente sobre la cama de arena tamizada mediante un movimiento vertical suave, evitando giros laterales que rompan la interfase.
+    6. **Protección contra factores externos (si es necesario)**: Instalar una sombrilla o pantalla protectora contra la radiación solar directa sobre el reservorio del equipo para evitar dilataciones térmicas del agua en la columna piezométrica que alteren las lecturas de nivel.
+    7. **Inicio del ensayo**: Abrir la llave de paso entre el reservorio y el disco de contacto exactamente en el tiempo $T=0$. Registre los descensos de la lámina de agua en el tubo graduado a los tiempos preestablecidos (por ejemplo, a los 0,5, 1, 2, 3, 4, 5, 10, 15... hasta los 70 minutos o hasta alcanzar la estabilización completa del flujo).
     """)
 
-# Función auxiliar para determinar la clase de infiltración y color (Semáforo/Clases USDA adaptadas a cm/h)
+# Función auxiliar para determinar la clase de infiltración y el ícono sin letras de color
 def clasificar_infiltracion(ib_cm_h):
     ib_mm_h = ib_cm_h * 10.0
     if ib_mm_h > 508:
-        return "Muy rápida (> 50,8 cm/h)", "🔵 Azul", "Infiltración elevada. Evaluar si puede favorecer la percolación o dificultar el manejo del agua."
+        return "Muy rápida (> 50,8 cm/h)", "🔵", "Infiltración elevada. Evaluar si puede favorecer la percolación o dificultar el manejo del agua."
     elif ib_mm_h >= 152.4:
-        return "Rápida (15,24 - 50,8 cm/h)", "🟢 Verde", "Infiltración relativamente favorable para numerosos usos agrícolas."
+        return "Rápida (15,24 - 50,8 cm/h)", "🟢", "Infiltración relativamente favorable para numerosos usos agrícolas."
     elif ib_mm_h >= 50.8:
-        return "Moderadamente rápida (5,08 - 15,24 cm/h)", "🟢 Verde", "Infiltración favorable para el desarrollo radicular y retención hídrica."
+        return "Moderadamente rápida (5,08 - 15,24 cm/h)", "🟢", "Infiltración favorable para el desarrollo radicular y retención hídrica."
     elif ib_mm_h >= 15.2:
-        return "Moderada (1,52 - 5,08 cm/h)", "🟡 Amarillo", "Infiltración intermedia. Interpretar según el suelo y el sistema productivo."
+        return "Moderada (1,52 - 5,08 cm/h)", "🟡", "Infiltración intermedia. Interpretar según el suelo y el sistema productivo."
     elif ib_mm_h >= 5.08:
-        return "Moderadamente lenta (0,508 - 1,52 cm/h)", "🟠 Naranja", "Infiltración relativamente baja. Evaluar textura, estructura, humedad y manejo."
+        return "Moderadamente lenta (0,508 - 1,52 cm/h)", "🟠", "Infiltración relativamente baja. Evaluar textura, estructura, humedad y manejo."
     elif ib_mm_h >= 1.52:
-        return "Lenta (0,152 - 0,508 cm/h)", "🟠 Naranja", "Infiltración baja. Investigar posibles limitaciones físicas, estructurales o de drenaje."
+        return "Lenta (0,152 - 0,508 cm/h)", "🟠", "Infiltración baja. Investigar posibles limitaciones físicas, estructurales o de drenaje."
     elif ib_mm_h >= 0.038:
-        return "Muy lenta (0,0038 - 0,152 cm/h)", "🔴 Rojo", "Infiltración muy baja. Riesgo de encharcamiento o escorrentía superficial."
+        return "Muy lenta (0,0038 - 0,152 cm/h)", "🔴", "Infiltración muy baja. Riesgo de encharcamiento o escorrentía superficial."
     else:
-        return "Prácticamente impermeable (< 0,0038 cm/h)", "🔴 Rojo", "Suelo prácticamente impermeable. Severas restricciones de drenaje."
+        return "Prácticamente impermeable (< 0,0038 cm/h)", "🔴", "Suelo prácticamente impermeable. Severas restricciones de drenaje."
 
 # Procesamiento de datos cuando se carga un archivo Excel
 if archivo_subido is not None:
@@ -278,19 +281,19 @@ if archivo_subido is not None:
                 except:
                     v_fit = np.full_like(t_fit, ib_val)
 
-                clase_inf, semaforo_inf, desc_inf = clasificar_infiltracion(ib_val)
+                clase_inf, icono_inf, desc_inf = clasificar_infiltracion(ib_val)
 
                 diccionario_datos[hoja] = {
                     'df': df, 'ib': ib_val, 'S': s_val, 'A': a_val,
                     't_fit': t_fit, 'v_fit': v_fit,
-                    'clase': clase_inf, 'semaforo': semaforo_inf, 'desc': desc_inf
+                    'clase': clase_inf, 'icono': icono_inf, 'desc': desc_inf
                 }
                 
                 resultados_globales.append({
                     'Muestra': hoja,
                     'Infiltración básica Ib (cm/h)': round(ib_val, 4),
                     'Clase (USDA)': clase_inf.split(" (")[0],
-                    'Indicador': semaforo_inf,
+                    'Indicador': icono_inf,
                     'Sorptividad S (cm*h^-0.5)': round(s_val, 4),
                     'Parámetro A de Ecuación de Philip (cm/h)': round(a_val, 4)
                 })
@@ -299,14 +302,23 @@ if archivo_subido is not None:
         
         with tab_resumen:
             st.header("Planillas resumen")
-            st.markdown("Resumen de parámetros hidráulicos y clasificación automática obtenida para cada determinación (muestra):")
+            st.markdown("Resumen de parámetros hidráulicos y clasificación obtenida para cada determinación (muestra):")
             st.dataframe(df_resumen_global, use_container_width=True)
             
+            # Botón 1: Descargar planilla resumen por separado
+            csv_muestra = df_resumen_global.to_csv(index=False).encode('utf-8')
+            st.download_button(
+                label="📥 Descargar Planilla Resumen por Muestra",
+                data=csv_muestra,
+                file_name="planilla_resumen_muestras.csv",
+                mime="text/csv",
+            )
+            
             st.markdown("---")
-            st.subheader("🚦 Interpretación automática por muestra")
+            st.subheader("🚦 Interpretación por muestra")
             for hoja, datos in diccionario_datos.items():
                 st.markdown(f"""
-                * **Muestra `{hoja}`** $\\rightarrow$ **$i_b$ = {datos['ib']:.3f} cm/h** | **Clase:** {datos['clase']} | **Semáforo:** {datos['semaforo']}  
+                * **Muestra `{hoja}`** $\\rightarrow$ **$i_b$ = {datos['ib']:.3f} cm/h** | **Clase:** {datos['clase']} | **Indicador:** {datos['icono']}  
                   *Interpretación:* {datos['desc']}
                 """)
 
@@ -337,8 +349,9 @@ if archivo_subido is not None:
                     'Coeficiente de Variación (CV %)': '{:.2f}%'
                 }), use_container_width=True)
                 
+                # Análisis de Variabilidad sin lo que está entre paréntesis
                 st.markdown("---")
-                st.subheader("Análisis de Variabilidad (Boxplot del Conjunto de Datos)")
+                st.subheader("Análisis de Variabilidad")
                 
                 fig_box, axes = plt.subplots(1, 3, figsize=(12, 4))
                 
@@ -362,29 +375,22 @@ if archivo_subido is not None:
                 plt.tight_layout()
                 st.pyplot(fig_box)
             
+            # Botón 2: Descargar valores promedio y análisis en otro archivo separado
             st.markdown("---")
-            df_export = pd.DataFrame([{
-                'Muestra': k,
-                'Infiltracion_basica_ib_cm_h': v['ib'],
-                'Clase_USDA': v['clase'],
-                'Sorptividad_S': v['S'],
-                'Parametro_A': v['A']
-            } for k, v in diccionario_datos.items()])
-            
-            csv_resumen = df_export.to_csv(index=False).encode('utf-8')
+            csv_promedios = df_estadistica.to_csv(index=False).encode('utf-8')
             st.download_button(
-                label="📥 Descargar Resultados",
-                data=csv_resumen,
-                file_name="resumen_parametros_infiltracion.csv",
+                label="📥 Descargar Valores Promedio y Estadísticas",
+                data=csv_promedios,
+                file_name="valores_promedio_variabilidad.csv",
                 mime="text/csv",
             )
 
         with tab_vel:
             st.header("Gráficos de Velocidad de Infiltración")
-            st.markdown("Evolución de la velocidad instantánea (valores observados), curva de ajuste exponencial y línea de Infiltración Básica ($i_b$):")
+            st.markdown("Evolución de la velocidad instantánea (valores observados), curva de ajuste y línea de Infiltración Básica ($i_b$):")
             
             for hoja, datos in diccionario_datos.items():
-                st.subheader(f"Muestra: {hoja} | Clase: {datos['clase']} ({datos['semaforo']})")
+                st.subheader(f"Muestra: {hoja} | Clase: {datos['clase']} {datos['icono']}")
                 df_h = datos['df']
                 ib_h = datos['ib']
                 t_fit = datos['t_fit']
@@ -395,9 +401,13 @@ if archivo_subido is not None:
                 ax.plot(t_fit, v_fit, color='#0F172A', linestyle='-', linewidth=2)
                 ax.axhline(y=ib_h, color='#DC2626', linestyle='--', linewidth=1.5, label=f'Infiltración básica $i_b$ = {ib_h:.2f} cm/h')
                 
+                # Coincidir el cero de ambos ejes (X e Y)
+                ax.set_xlim(left=0)
+                ax.set_ylim(bottom=0)
+                
                 ax.set_xlabel('Tiempo (minutos)', fontweight='bold', color='#1E3A8A')
                 ax.set_ylabel('Velocidad (cm/h)', fontweight='bold', color='#1E3A8A')
-                ax.set_title(f'Tasa de Infiltración - {hoja}', fontweight='bold', color='#1E3A8A')
+                ax.set_title(f'Muestra {hoja} - {datos["clase"].split(" (")[0]} {datos["icono"]}', fontweight='bold', color='#1E3A8A')
                 ax.grid(True, linestyle=':', alpha=0.6)
                 ax.legend()
                 st.pyplot(fig)
@@ -413,13 +423,82 @@ if archivo_subido is not None:
                 
                 fig, ax = plt.subplots(figsize=(9, 4))
                 ax.plot(df_h['Tiempo_min'], df_h['I_acumulada_cm'], marker='s', color='#1E3A8A', linewidth=2, label='Infiltración Acumulada ($I$)')
+                
+                # Coincidir el cero de ambos ejes
+                ax.set_xlim(left=0)
+                ax.set_ylim(bottom=0)
+                
                 ax.set_xlabel('Tiempo (minutos)', fontweight='bold', color='#1E3A8A')
                 ax.set_ylabel('Lámina Acumulada (cm)', fontweight='bold', color='#1E3A8A')
-                ax.set_title(f'Curva Acumulada - {hoja}', fontweight='bold', color='#1E3A8A')
+                ax.set_title(f'Curva Acumulada - Muestra {hoja}', fontweight='bold', color='#1E3A8A')
                 ax.grid(True, linestyle=':', alpha=0.6)
                 ax.legend()
                 st.pyplot(fig)
                 st.markdown("---")
+
+        # Botón para descargar todos los gráficos en un solo archivo Word (.docx)
+        st.markdown("---")
+        st.header("📄 Exportar Reporte de Gráficos")
+        if st.button("📥 Generar y Descargar todos los gráficos en Word (.docx)"):
+            doc = Document()
+            doc.add_heading('Reporte de Gráficos de Infiltración', 0)
+            doc.add_paragraph('Resultados de ensayos con Tensiómetro de Disco.')
+            
+            for hoja, datos in diccionario_datos.items():
+                doc.add_heading(f'Muestra: {hoja}', level=1)
+                
+                # Generar gráfico velocidad
+                fig_v, ax_v = plt.subplots(figsize=(6, 3.5))
+                df_h = datos['df']
+                ib_h = datos['ib']
+                ax_v.plot(df_h['Tiempo_min'][1:], df_h['Vel_Infiltracion_cm_h'][1:], marker='o', color='#2563EB', linestyle='', label='Observados')
+                ax_v.plot(datos['t_fit'], datos['v_fit'], color='#0F172A', linestyle='-', linewidth=2)
+                ax_v.axhline(y=ib_h, color='#DC2626', linestyle='--', linewidth=1.5, label=f'Ib = {ib_h:.2f} cm/h')
+                ax_v.set_xlim(left=0)
+                ax_v.set_ylim(bottom=0)
+                ax_v.set_xlabel('Tiempo (min)')
+                ax_v.set_ylabel('Velocidad (cm/h)')
+                ax_v.set_title(f'Velocidad - {hoja}')
+                ax_v.grid(True, linestyle=':', alpha=0.6)
+                ax_v.legend(fontsize=8)
+                
+                buf_v = io.BytesIO()
+                plt.savefig(buf_v, format='png', bbox_inches='tight', dpi=150)
+                buf_v.seek(0)
+                doc.add_paragraph(f'Tasa de Infiltración - Muestra {hoja}')
+                doc.add_picture(buf_v, width=Inches(5.5))
+                plt.close(fig_v)
+                
+                # Generar gráfico acumulado
+                fig_a, ax_a = plt.subplots(figsize=(6, 3.5))
+                ax_a.plot(df_h['Tiempo_min'], df_h['I_acumulada_cm'], marker='s', color='#1E3A8A', linewidth=2, label='Acumulada')
+                ax_a.set_xlim(left=0)
+                ax_a.set_ylim(bottom=0)
+                ax_a.set_xlabel('Tiempo (min)')
+                ax_a.set_ylabel('Lámina Acumulada (cm)')
+                ax_a.set_title(f'Curva Acumulada - {hoja}')
+                ax_a.grid(True, linestyle=':', alpha=0.6)
+                ax_a.legend(fontsize=8)
+                
+                buf_a = io.BytesIO()
+                plt.savefig(buf_a, format='png', bbox_inches='tight', dpi=150)
+                buf_a.seek(0)
+                doc.add_paragraph(f'Lámina Acumulada - Muestra {hoja}')
+                doc.add_picture(buf_a, width=Inches(5.5))
+                plt.close(fig_a)
+                
+                doc.add_page_break()
+            
+            word_io = io.BytesIO()
+            doc.save(word_io)
+            word_io.seek(0)
+            
+            st.download_button(
+                label="📥 Click aquí para descargar el archivo Word (.docx)",
+                data=word_io,
+                file_name="reporte_graficos_infiltracion.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            )
 
     except Exception as e:
         with tab_resumen:
