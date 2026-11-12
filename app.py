@@ -64,7 +64,7 @@ st.markdown("""
 st.title("Medición y Análisis de Infiltración a Campo con Tensiómetro de Disco")
 st.subheader("Aplicación de la Ecuación de Philip")
 
-# Barra lateral para configuración y carga de archivos
+# Barra lateral para configuración y modo de entrada
 with st.sidebar:
     st.header("⚙️ Configuración del Ensayo")
     
@@ -79,20 +79,59 @@ with st.sidebar:
     )
     
     st.markdown("---")
-    st.header("📂 Carga de Datos")
-    archivo_subido = st.file_uploader(
-        "Cargar Planilla Excel (.xlsx)", 
-        type=["xlsx", "xls"],
-        help="Cada hoja debe representar una determinación a campo con columnas: Tiempo (min) y Lámina (cm)"
+    st.header("📥 Método de Ingreso de Datos")
+    
+    modo_ingreso = st.radio(
+        "Seleccione cómo desea ingresar los datos:",
+        ["Planilla Excel (.xlsx)", "Carga Manual en Campo"]
     )
     
-    # Instrucciones en la barra lateral con ícono 📋
-    st.markdown("""
-        <div style="background-color: #1E3A8A; padding: 10px; border-radius: 6px; color: #E2E8F0; font-size: 13px; margin-top: 10px;">
-            📋 <b>Instrucciones:</b><br>
-            Cada hoja del archivo Excel debe contener las lecturas de campo en dos columnas (Columna 1: Tiempo en minutos, Columna 2: Lámina en cm).
-        </div>
-    """, unsafe_allow_html=True)
+    diccionario_datos = {}
+    
+    if modo_ingreso == "Planilla Excel (.xlsx)":
+        archivo_subido = st.file_uploader(
+            "Cargar Planilla Excel (.xlsx)", 
+            type=["xlsx", "xls"],
+            help="Cada hoja debe representar una determinación a campo con columnas: Tiempo (min) y Lámina (cm)"
+        )
+        st.markdown("""
+            <div style="background-color: #1E3A8A; padding: 10px; border-radius: 6px; color: #E2E8F0; font-size: 13px; margin-top: 10px;">
+                📋 <b>Instrucciones:</b><br>
+                Cada hoja del archivo Excel debe contener las lecturas de campo en dos columnas (Columna 1: Tiempo en minutos, Columna 2: Lámina en cm).
+            </div>
+        """, unsafe_allow_html=True)
+        
+        if archivo_subido is not None:
+            try:
+                xls = pd.ExcelFile(archivo_subido)
+                for hoja in xls.sheet_names:
+                    df_raw = pd.read_excel(archivo_subido, sheet_name=hoja)
+                    if df_raw.shape[1] >= 2:
+                        df = df_raw.iloc[:, :2].copy()
+                        df.columns = ['Tiempo_min', 'Lamina_cm']
+                        diccionario_datos[hoja] = df
+            except Exception as e:
+                st.error(f"Error al leer el archivo: {e}")
+
+    else:  # Carga manual interactiva en campo
+        st.markdown("""
+            <div style="background-color: #1E3A8A; padding: 10px; border-radius: 6px; color: #E2E8F0; font-size: 13px; margin-top: 10px;">
+                ✍️ <b>Carga en Campo:</b><br>
+                Ingrese directamente las lecturas de tiempo y lámina leída. Puede agregar o quitar filas según necesite.
+            </div>
+        """, unsafe_allow_html=True)
+        
+        nombre_muestra = st.text_input("Identificación de la Muestra", value="Muestra_1")
+        
+        # Datos iniciales por defecto para la tabla interactiva
+        datos_iniciales = pd.DataFrame({
+            'Tiempo_min': [0.0, 1.0, 3.0, 5.0, 10.0, 15.0, 20.0, 30.0],
+            'Lamina_cm': [45.0, 42.5, 39.0, 36.5, 31.0, 27.5, 24.5, 20.0]
+        })
+        
+        df_manual = st.data_editor(datos_iniciales, num_rows="dynamic", use_container_width=True)
+        if not df_manual.empty:
+            diccionario_datos[nombre_muestra] = df_manual
 
 # Pie de página fijo requerido
 st.markdown("""
@@ -146,7 +185,6 @@ with tab_fund:
     El *Soil Quality Test Kit Guide* del USDA presenta una clasificación de ocho clases de infiltración, desde muy rápida hasta prácticamente impermeable. La clasificación se basa en valores de infiltración estabilizada y recoge referencias clave como Hillel (1982) y Lowery et al. (1996).
     """)
     
-    # Cuadro de ocho clases expresado en cm/h
     df_clases = pd.DataFrame({
         'Clase': [
             'Muy rápida', 'Rápida', 'Moderadamente rápida', 'Moderada', 
@@ -214,17 +252,13 @@ def clasificar_infiltracion(ib_cm_h):
     else:
         return "Prácticamente impermeable (< 0,0038 cm/h)", "🔴", "Suelo prácticamente impermeable. Severas restricciones de drenaje."
 
-# Procesamiento de datos cuando se carga un archivo Excel
-if archivo_subido is not None:
+# Procesamiento de datos del diccionario (ya sea por Excel o carga manual)
+if len(diccionario_datos) > 0:
     try:
-        xls = pd.ExcelFile(archivo_subido)
-        sheet_names = xls.sheet_names
-        
         resultados_globales = []
-        diccionario_datos = {}
+        procesados_datos = {}
         
-        for hoja in sheet_names:
-            df_raw = pd.read_excel(archivo_subido, sheet_name=hoja)
+        for hoja, df_raw in diccionario_datos.items():
             if df_raw.shape[1] >= 2:
                 df = df_raw.iloc[:, :2].copy()
                 df.columns = ['Tiempo_min', 'Lamina_cm']
@@ -265,14 +299,14 @@ if archivo_subido is not None:
                 else:
                     s_val, a_val = 0.0, 0.0
                 
-                # Ajuste exponencial para velocidad: i(t) = a * exp(-b * t) + c
+                # Ajuste exponencial para velocidad
                 t_vel = df['Tiempo_min'].values[1:]
                 v_vel = df['Vel_Infiltracion_cm_h'].values[1:]
                 
                 def exp_func(t, a, b, c):
                     return a * np.exp(-b * t) + c
                 
-                t_fit = np.linspace(t_vel.min(), t_vel.max(), 100)
+                t_fit = np.linspace(t_vel.min(), t_vel.max(), 100) if len(t_vel) > 1 else np.array([0, 1])
                 v_fit = np.zeros_like(t_fit)
                 
                 try:
@@ -283,7 +317,7 @@ if archivo_subido is not None:
 
                 clase_inf, icono_inf, desc_inf = clasificar_infiltracion(ib_val)
 
-                diccionario_datos[hoja] = {
+                procesados_datos[hoja] = {
                     'df': df, 'ib': ib_val, 'S': s_val, 'A': a_val,
                     't_fit': t_fit, 'v_fit': v_fit,
                     'clase': clase_inf, 'icono': icono_inf, 'desc': desc_inf
@@ -302,10 +336,9 @@ if archivo_subido is not None:
         
         with tab_resumen:
             st.header("Planillas resumen")
-            st.markdown("Resumen de parámetros hidráulicos y clasificación obtenida para cada determinación (muestra):")
+            st.markdown("Resumen de parámetros hidráulicos y clasificación obtenida para cada determinación:")
             st.dataframe(df_resumen_global, use_container_width=True)
             
-            # Botón 1: Descargar planilla resumen por separado
             csv_muestra = df_resumen_global.to_csv(index=False).encode('utf-8')
             st.download_button(
                 label="📥 Descargar Planilla Resumen por Muestra",
@@ -316,7 +349,7 @@ if archivo_subido is not None:
             
             st.markdown("---")
             st.subheader("🚦 Interpretación por muestra")
-            for hoja, datos in diccionario_datos.items():
+            for hoja, datos in procesados_datos.items():
                 st.markdown(f"""
                 * **Muestra `{hoja}`** $\\rightarrow$ **$i_b$ = {datos['ib']:.3f} cm/h** | **Clase:** {datos['clase']} | **Indicador:** {datos['icono']}  
                   *Interpretación:* {datos['desc']}
@@ -326,9 +359,9 @@ if archivo_subido is not None:
             st.subheader("Valores promedio del conjunto de datos")
             
             df_num_stats = pd.DataFrame({
-                'Infiltración básica Ib (cm/h)': [d['ib'] for d in diccionario_datos.values()],
-                'Sorptividad S (cm*h^-0.5)': [d['S'] for d in diccionario_datos.values()],
-                'Parámetro A de Ecuación de Philip (cm/h)': [d['A'] for d in diccionario_datos.values()]
+                'Infiltración básica Ib (cm/h)': [d['ib'] for d in procesados_datos.values()],
+                'Sorptividad S (cm*h^-0.5)': [d['S'] for d in procesados_datos.values()],
+                'Parámetro A de Ecuación de Philip (cm/h)': [d['A'] for d in procesados_datos.values()]
             })
             
             if not df_num_stats.empty:
@@ -349,7 +382,6 @@ if archivo_subido is not None:
                     'Coeficiente de Variación (CV %)': '{:.2f}%'
                 }), use_container_width=True)
                 
-                # Análisis de Variabilidad sin lo que está entre paréntesis
                 st.markdown("---")
                 st.subheader("Análisis de Variabilidad")
                 
@@ -375,7 +407,6 @@ if archivo_subido is not None:
                 plt.tight_layout()
                 st.pyplot(fig_box)
             
-            # Botón 2: Descargar valores promedio y análisis en otro archivo separado
             st.markdown("---")
             csv_promedios = df_estadistica.to_csv(index=False).encode('utf-8')
             st.download_button(
@@ -389,7 +420,7 @@ if archivo_subido is not None:
             st.header("Gráficos de Velocidad de Infiltración")
             st.markdown("Evolución de la velocidad instantánea (valores observados), curva de ajuste y línea de Infiltración Básica ($i_b$):")
             
-            for hoja, datos in diccionario_datos.items():
+            for hoja, datos in procesados_datos.items():
                 st.subheader(f"Muestra: {hoja} | Clase: {datos['clase']} {datos['icono']}")
                 df_h = datos['df']
                 ib_h = datos['ib']
@@ -401,7 +432,6 @@ if archivo_subido is not None:
                 ax.plot(t_fit, v_fit, color='#0F172A', linestyle='-', linewidth=2)
                 ax.axhline(y=ib_h, color='#DC2626', linestyle='--', linewidth=1.5, label=f'Infiltración básica $i_b$ = {ib_h:.2f} cm/h')
                 
-                # Coincidir el cero de ambos ejes (X e Y)
                 ax.set_xlim(left=0)
                 ax.set_ylim(bottom=0)
                 
@@ -415,16 +445,15 @@ if archivo_subido is not None:
 
         with tab_acum:
             st.header("Gráficos de Lámina Acumulada")
-            st.markdown("Curvas de infiltración acumulada con sus puntos medidos para cada muestra:")
+            st.markdown("Curvas de infiltración acumulada con sus puntos medidos:")
             
-            for hoja, datos in diccionario_datos.items():
+            for hoja, datos in procesados_datos.items():
                 st.subheader(f"Muestra: {hoja}")
                 df_h = datos['df']
                 
                 fig, ax = plt.subplots(figsize=(9, 4))
                 ax.plot(df_h['Tiempo_min'], df_h['I_acumulada_cm'], marker='s', color='#1E3A8A', linewidth=2, label='Infiltración Acumulada ($I$)')
                 
-                # Coincidir el cero de ambos ejes
                 ax.set_xlim(left=0)
                 ax.set_ylim(bottom=0)
                 
@@ -444,10 +473,10 @@ if archivo_subido is not None:
             doc.add_heading('Reporte de Gráficos de Infiltración', 0)
             doc.add_paragraph('Resultados de ensayos con Tensiómetro de Disco.')
             
-            for hoja, datos in diccionario_datos.items():
+            for hoja, datos in procesados_datos.items():
                 doc.add_heading(f'Muestra: {hoja}', level=1)
                 
-                # Generar gráfico velocidad
+                # Gráfico velocidad
                 fig_v, ax_v = plt.subplots(figsize=(6, 3.5))
                 df_h = datos['df']
                 ib_h = datos['ib']
@@ -469,7 +498,7 @@ if archivo_subido is not None:
                 doc.add_picture(buf_v, width=Inches(5.5))
                 plt.close(fig_v)
                 
-                # Generar gráfico acumulado
+                # Gráfico acumulado
                 fig_a, ax_a = plt.subplots(figsize=(6, 3.5))
                 ax_a.plot(df_h['Tiempo_min'], df_h['I_acumulada_cm'], marker='s', color='#1E3A8A', linewidth=2, label='Acumulada')
                 ax_a.set_xlim(left=0)
@@ -502,7 +531,7 @@ if archivo_subido is not None:
 
     except Exception as e:
         with tab_resumen:
-            st.error(f"❌ Ocurrió un error al procesar el archivo Excel: {e}")
+            st.error(f"❌ Ocurrió un error al procesar los datos: {e}")
 else:
     with tab_resumen:
-        st.info("👈 Por favor, cargue un archivo de planilla de cálculo (.xlsx) en la barra lateral para visualizar las planillas resumen.")
+        st.info("👈 Por favor, seleccione el método de ingreso y cargue el archivo Excel o complete la tabla manual en la barra lateral para comenzar.")
